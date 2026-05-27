@@ -1,0 +1,29 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node / TS tooling (not used in this pass, but pre-empted)
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Solidity tooling (Foundry, Hardhat — not used in this pass, but pre-empted)
+out/
+cache/
+artifacts/
+typechain/
+typechain-types/
+broadcast/
+
+# Local secrets — never commit
+.env
+.env.*
+!.env.example
