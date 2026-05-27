@@ -1,0 +1,55 @@
+%% Keychain Protocol — C4 Level 2: Container view (core services)
+%% See docs/00-overview.md
+flowchart TB
+    subgraph User Device
+        Patronus["Patronus Guardian<br/>(native app)"]
+        PatExt["Patronus Extension Surface<br/>(WebExt, postMessage, URL scheme)"]
+    end
+
+    subgraph dApp Site
+        Page["dApp page<br/>(browser DOM)"]
+    end
+
+    subgraph L1 BlockDAG
+        Ingress["DAG Ingress Node"]
+        Pruner["ZK Pruning Prover<br/>(plonky2 candidate)"]
+        Anchor["Anchor Proposer<br/>(VRF-rotated)"]
+        Mempool[(Active state<br/>30-day window)]
+    end
+
+    subgraph L2 (Base)
+        Anc["IKeychainAnchor"]
+        Gov["IKeychainUpgradeGovernor"]
+        Reg["IPairwiseDIDRegistry"]
+        SKM["IEphemeralSessionKeyManager"]
+        EP4337["ERC-4337 EntryPoint v0.7"]
+    end
+
+    subgraph L3 StorageNet
+        Gateway["IStorageNetGateway<br/>(control plane)"]
+        Nodes[("Storage nodes<br/>(IPFS / Arweave / ComputeNet)")]
+    end
+
+    subgraph External
+        CAEP["CAEP Receivers"]
+    end
+
+    Page -->|"requestConsentOutOfDom (F1)"| PatExt
+    PatExt -->|"deep-link / OS notif"| Patronus
+    Patronus -->|signed events| Ingress
+    Patronus -->|UserOps| EP4337
+    EP4337 --> SKM
+    Page -->|requestRead/Write| Gateway
+    Gateway -->|"AccessLogged (BEFORE serve)"| Ingress
+    Ingress --> Mempool
+    Mempool --> Pruner
+    Pruner --> Anchor
+    Anchor -->|commitEpoch + ZK proof| Anc
+    Anc -.->|EpochAnchored| Patronus
+    Anc -.->|EpochAnchored| Gateway
+    Gov -->|upgrade proposal flow| Anc
+    Gov -->|upgrade proposal flow| SKM
+    Gov -->|upgrade proposal flow| Reg
+    Gov -->|upgrade proposal flow| Gateway
+    Patronus -.->|"CAEP SETs (ADR-0008)"| CAEP
+    Gateway -.-> Nodes

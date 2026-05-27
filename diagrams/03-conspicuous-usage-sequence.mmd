@@ -1,0 +1,31 @@
+%% Conspicuous Usage — end-to-end sequence (V1 AiTM defense in action)
+%% See docs/05-conspicuous-usage.md §3
+sequenceDiagram
+    participant Page as dApp page
+    participant Pat as Patronus (out-of-DOM)
+    participant SKM as IEphemeralSessionKeyManager
+    participant DAG as L1 BlockDAG
+    participant Sub as Patronus Subscriber
+    participant User
+
+    Page->>Pat: requestAction(intent)
+    Pat->>Pat: evaluateRisk(ctx)
+    Pat-->>User: out-of-DOM consent prompt (F1)
+    User-->>Pat: approve (hardware-backed; F2)
+    Pat->>SKM: installSessionKey(params w/ parentSessionId, requiredAal)
+    SKM->>DAG: emit SessionIssued
+    Pat->>SKM: signUserOp(userOpHash)
+    SKM-->>SKM: validateUserOp (stateless; ADR-0007)
+    SKM->>DAG: emit SessionUsed
+    DAG-->>Sub: stream event (≤ 2 s)
+    Sub-->>User: in-app alert (out-of-DOM)
+    Note over User,DAG: 24h dispute window opens
+
+    alt user disputes
+        User->>Pat: dispute / revoke
+        Pat->>SKM: revokeSessionKey(sessionId, reasonCode=stolen)
+        SKM->>DAG: emit SessionRevoked
+        DAG-->>Page: CAEP session-revoked SET (ADR-0008)
+    else window closes
+        DAG-->>DAG: "consented by silence" — finalized
+    end

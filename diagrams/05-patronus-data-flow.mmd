@@ -1,0 +1,20 @@
+%% Patronus Guardian — data flow
+%% See docs/04-patronus-guardian.md §7
+flowchart LR
+    Intent["dApp intent"] --> Risk["Risk Evaluator<br/>(RiskContext → RiskTier)"]
+    Risk --> Tier{Tier?}
+    Tier -- Low + standing approval --> Sign
+    Tier -- Moderate / High --> OOD["Out-of-DOM Consent (F1)<br/>(native app / hardware / TEE)"]
+    OOD -- approve --> AuthCheck["Authenticator check<br/>(MDS3 hardware-backed @ Mod+; F2)"]
+    AuthCheck --> Sign["Derive session key (HKDF) +<br/>sign UserOp (stateless validate; ADR-0007)"]
+    OOD -- deny --> AnomDeny["emit AnomalyDetected"]
+    Sign --> DAG[("L1 DAG event:<br/>SessionIssued / SessionUsed")]
+    DAG --> Alerts["Alert subscriber<br/>(Patronus, ≤ 2s)"]
+    Alerts -.-> User([User])
+    DAG -.->|"CAEP SET (P1)"| CAEP["External CAEP receivers"]
+    Sign -.-> CAEP
+    User -.->|revoke| Revoke["revokeSession (one bitmap flip)"]
+    Revoke --> DAG
+    AnomScore[("DAG anomaly score<br/>(feeds RiskContext)")]
+    DAG --> AnomScore
+    AnomScore --> Risk

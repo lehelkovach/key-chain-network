@@ -1,0 +1,26 @@
+%% Keychain Protocol — C4 Level 1: System Context
+%% See docs/00-overview.md
+flowchart LR
+    User([User])
+    Device["User Device<br/>+ Patronus Guardian"]
+    dApp["dApp / AI Agent"]
+    Notary["HumanKey Notary<br/>(Tribunal)"]
+    DAG[("Keychain BlockDAG<br/>Layer 1 — Telemetry")]
+    L2[("Anchor Layer<br/>Base L2")]
+    SN[("StorageNet<br/>Layer 3 — Encrypted Custody")]
+    TEE["Confidential TEE Oracle<br/>(HumanKey High-tier liveness)"]
+    HK["HumanKey Protocol<br/>(zkNFT, root of trust)"]
+    CAEP["External CAEP Receivers<br/>(Okta, Entra, etc.)"]
+
+    User <-->|consent / alerts| Device
+    Device -->|"signs UserOps<br/>(ephemeral session keys)"| dApp
+    Device -->|emits Conspicuous Usage events| DAG
+    Device -->|"liveness video<br/>(High tier only)"| TEE
+    dApp -->|reads / writes| SN
+    SN -->|"AccessLogged<br/>(BEFORE serve)"| DAG
+    DAG -->|epoch ZK rollup proof| L2
+    DAG -.->|"CAEP / SSF SETs<br/>(ADR-0008)"| CAEP
+    TEE -->|"LivenessAttestation"| Notary
+    Notary -->|"NotaryAttestation events"| DAG
+    HK -.->|tribunal + mint + recovery| DAG
+    HK -.->|zkNFT + governance| L2

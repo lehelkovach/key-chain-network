@@ -1,0 +1,29 @@
+%% F1 — out-of-DOM consent channel
+%% See docs/04-patronus-guardian.md §4 and ADR-0006
+sequenceDiagram
+    participant Page as dApp page (DOM)
+    participant Ext as Patronus Extension Surface
+    participant Pat as Patronus Native App
+    participant User
+    participant DAG as L1 BlockDAG
+
+    Page->>Ext: requestConsent(intent)
+    Note over Page,Ext: Page may request, never render
+    Ext->>Pat: deep-link / OS notification / URL scheme
+    Pat-->>User: render dialog in Patronus's OWN UI surface
+    Note right of User: DOM-level attackers cannot reach<br/>this surface (defeats V4 prompt spoofing,<br/>V5 XSS passkey substitution)
+
+    alt user approves with hardware-backed authenticator (F2)
+        User-->>Pat: approve
+        Pat->>Pat: MDS3 check / Secure Enclave attest
+        Pat-->>Ext: ConsentResult{ approved: true, consentRef }
+        Ext-->>Page: yes + consentRef
+    else user denies
+        User-->>Pat: deny
+        Pat->>DAG: emit AnomalyDetected (only if suspicious)
+        Pat-->>Ext: ConsentResult{ approved: false, reason }
+        Ext-->>Page: no + reason
+    else page tries to render imitation dialog
+        Pat->>DAG: emit AnomalyDetected("consent-channel-violation")
+        Pat-->>Ext: error
+    end

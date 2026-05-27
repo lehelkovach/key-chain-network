@@ -1,0 +1,22 @@
+%% Anchor / pruning rollup — sequence
+%% See docs/02-layer2-anchor.md §3 and ADR-0001
+sequenceDiagram
+    participant DAG as L1 BlockDAG (events)
+    participant Pruner as ZK Pruning Prover
+    participant Anchor as Anchor Proposer
+    participant L2 as Base L2: IKeychainAnchor
+    participant ETH as Ethereum L1 (settlement)
+
+    Note over DAG: Events accumulate for the epoch
+    DAG->>Pruner: epoch boundary triggers proof
+    Pruner-->>Pruner: build Merkle accumulator
+    Pruner-->>Pruner: generate ZK proof of correct summarization
+    Pruner->>Anchor: dagStateRoot + zkProof
+    Anchor->>L2: commitEpoch(root, proof, epoch)
+    L2-->>L2: verifyZkProof(...)
+    L2-->>L2: store root by epoch
+    L2-->>DAG: emit EpochAnchored
+    Note over DAG: After 30 days, pre-epoch events can be pruned;<br/>users retain copies on StorageNet
+    L2-->>ETH: included in next L2 batch
+    ETH-->>L2: L2 finality after challenge window
+    Note over L2,ETH: Optimistic L2 finality lags ~7d;<br/>protocol-level finality is at commitEpoch ack
