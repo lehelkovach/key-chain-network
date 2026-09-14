@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key-chain-network.dev/schemas/mint-request.schema.json",
+  "title": "KeyChain mint request",
+  "description": "Body of POST /agents/mint and POST /agents/register. The ACP v2 register contract is the subset {brand, repo_locale, ordinal_path, parent_agent_uuid, role, medium, session_id}; every other property is a KeyChain extension with a safe default.",
+  "type": "object",
+  "additionalProperties": false,
+  "anyOf": [
+    { "required": ["brand", "repo_locale"] },
+    { "required": ["logical_handle"] }
+  ],
+  "properties": {
+    "brand": {
+      "description": "Agent vendor or runtime, for example 'cursor'. Trimmed and lowercased.",
+      "type": "string"
+    },
+    "repo_locale": {
+      "description": "Repository or workspace the agent operates in, for example 'iac-bus'.",
+      "type": "string"
+    },
+    "ordinal_path": {
+      "description": "Position in the agent tree. Omit to mint the master ordinal '0', or the next free child of the given parent.",
+      "type": "string",
+      "pattern": "^([0-9]+)(-[0-9]+)*$"
+    },
+    "logical_handle": {
+      "description": "Alternative to brand/repo_locale/ordinal_path. Any component also supplied must agree with it.",
+      "type": "string",
+      "pattern": "^agent:[a-z0-9_-]+\\.[a-z0-9_.-]+\\.[0-9]+(-[0-9]+)*$"
+    },
+    "parent_agent_uuid": {
+      "description": "Required for any non-master ordinal path.",
+      "type": "string"
+    },
+    "parent_handle": {
+      "description": "The parent named by logical handle instead of UUID.",
+      "type": "string"
+    },
+    "role": {
+      "description": "Determines the default capability set. Defaults to 'worker'.",
+      "type": "string"
+    },
+    "medium": {
+      "description": "Transport the endpoint handle is qualified with. Required by /agents/register; defaults to 'api' for /agents/mint.",
+      "enum": ["web", "slack", "ide", "api", "automation", "other"]
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+    },
+    "capabilities": {
+      "description": "Requested capabilities. Must be within what the issuer holds; defaults to the role's set.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "custody": {
+      "description": "'agent' returns the private key once and KeyChain keeps only the public half. 'keychain' seals the private key so KeyChain can sign delegated certificates and self-contained tokens for this agent.",
+      "enum": ["agent", "keychain"],
+      "default": "agent"
+    },
+    "public_key": {
+      "description": "An OKP JWK the agent generated itself. Supply this to keep the private key entirely off the KeyChain host.",
+      "type": "object",
+      "required": ["kty", "crv", "x"],
+      "properties": {
+        "kty": { "const": "OKP" },
+        "crv": { "const": "Ed25519" },
+        "x": { "type": "string" },
+        "kid": { "type": "string" }
+      }
+    },
+    "issuer": {
+      "description": "Who signs the new certificate. 'auto' prefers the parent and falls back to the trust root.",
+      "enum": ["auto", "root", "parent"],
+      "default": "auto"
+    },
+    "root": {
+      "description": "Trust root to mint under, by root_id, name or key_id. Defaults to the instance default root.",
+      "type": "string"
+    },
+    "ttl_seconds": {
+      "description": "Certificate lifetime. Clamped to the issuer's remaining validity.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

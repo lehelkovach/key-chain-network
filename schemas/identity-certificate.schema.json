@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key-chain-network.dev/schemas/identity-certificate.schema.json",
+  "title": "KeyChain identity certificate",
+  "description": "Binds a minted identity to an Ed25519 public key, signed by its issuer. A chain of these documents terminating in a self-signed root is everything a relying party needs to authorize an agent offline.",
+  "type": "object",
+  "required": [
+    "kc_version",
+    "cert_type",
+    "cert_id",
+    "subject",
+    "issuer",
+    "capabilities",
+    "issued_at",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "kc_version": {
+      "description": "Certificate format version. Verifiers must reject unknown values rather than ignoring unrecognised fields, because the signature covers every member.",
+      "const": "kc1"
+    },
+    "cert_type": {
+      "enum": ["root", "agent"]
+    },
+    "cert_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "subject": {
+      "oneOf": [
+        { "$ref": "#/$defs/rootSubject" },
+        { "$ref": "#/$defs/agentSubject" }
+      ]
+    },
+    "issuer": {
+      "type": "object",
+      "required": ["key_id", "subject_ref", "self_signed"],
+      "additionalProperties": false,
+      "properties": {
+        "cert_id": {
+          "description": "Certificate of the issuer. Null only for a self-signed root.",
+          "type": ["string", "null"]
+        },
+        "key_id": { "$ref": "#/$defs/keyId" },
+        "subject_ref": {
+          "description": "Human-readable issuer reference: a logical handle, or root:<root_id>.",
+          "type": "string"
+        },
+        "self_signed": { "type": "boolean" }
+      }
+    },
+    "capabilities": {
+      "$ref": "#/$defs/capabilityList"
+    },
+    "issued_at": { "$ref": "#/$defs/timestamp" },
+    "expires_at": {
+      "description": "Null means the certificate does not expire. A certificate is never issued with an expiry later than its issuer's.",
+      "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }]
+    },
+    "signature": {
+      "type": "object",
+      "required": ["alg", "key_id", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "alg": { "const": "EdDSA" },
+        "key_id": { "$ref": "#/$defs/keyId" },
+        "value": {
+          "description": "Base64url Ed25519 signature over the canonical JSON of this document with the signature member removed.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "keyId": {
+      "description": "RFC 7638 JWK thumbprint of the public key, base64url without padding.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "timestamp": {
+      "description": "Second-precision UTC timestamp.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "publicKey": {
+      "type": "object",
+      "required": ["kty", "crv", "x", "kid"],
+      "additionalProperties": false,
+      "properties": {
+        "kty": { "const": "OKP" },
+        "crv": { "const": "Ed25519" },
+        "x": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+        "kid": { "$ref": "#/$defs/keyId" }
+      }
+    },
+    "capabilityList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(\\*|[a-z0-9_-]+(\\.[a-z0-9_-]+)*(\\.\\*)?)$"
+      }
+    },
+    "rootSubject": {
+      "type": "object",
+      "required": ["root_id", "name", "key_id", "public_key"],
+      "additionalProperties": false,
+      "properties": {
+        "root_id": { "type": "string" },
+        "name": { "type": "string", "pattern": "^[a-z0-9._-]+$" },
+        "key_id": { "$ref": "#/$defs/keyId" },
+        "public_key": { "$ref": "#/$defs/publicKey" }
+      }
+    },
+    "agentSubject": {
+      "type": "object",
+      "required": [
+        "agent_uuid",
+        "logical_handle",
+        "brand",
+        "repo_locale",
+        "ordinal_path",
+        "role",
+        "key_id",
+        "public_key"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "agent_uuid": { "type": "string", "format": "uuid" },
+        "logical_handle": {
+          "type": "string",
+          "pattern": "^agent:[a-z0-9_-]+\\.[a-z0-9_.-]+\\.[0-9]+(-[0-9]+)*$"
+        },
+        "brand": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+        "repo_locale": { "type": "string", "pattern": "^[a-z0-9_.-]+$" },
+        "ordinal_path": { "type": "string", "pattern": "^([0-9]+)(-[0-9]+)*$" },
+        "role": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+        "key_id": { "$ref": "#/$defs/keyId" },
+        "public_key": { "$ref": "#/$defs/publicKey" },
+        "parent_agent_uuid": { "type": "string", "format": "uuid" }
+      }
+    }
+  }
+}

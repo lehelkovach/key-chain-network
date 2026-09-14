@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key-chain-network.dev/schemas/capability-token.schema.json",
+  "title": "KeyChain capability token",
+  "description": "Header and payload of the compact EdDSA JWS a minted agent presents to a relying party such as IAC-Bus. The token replaces a shared bus secret with a per-agent, capability-scoped, expiring credential.",
+  "type": "object",
+  "required": ["header", "payload"],
+  "properties": {
+    "header": {
+      "type": "object",
+      "required": ["alg", "typ", "kid"],
+      "additionalProperties": false,
+      "properties": {
+        "alg": { "const": "EdDSA" },
+        "typ": { "const": "kc1-token" },
+        "kid": {
+          "description": "RFC 7638 thumbprint of the signing key: the agent's own key for a self-contained token, the trust root's for an authority-signed one.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43}$"
+        },
+        "kcc": {
+          "description": "Certificate chain from leaf to self-signed root. Present only in self-contained tokens, which is what lets a relying party verify with no network call.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "required": ["kc_version", "jti", "iss", "sub", "handle", "caps", "iat", "nbf", "exp"],
+      "properties": {
+        "kc_version": { "const": "kc1" },
+        "jti": { "type": "string", "format": "uuid" },
+        "iss": {
+          "description": "Issuer reference: a logical handle, or root:<name>.",
+          "type": "string"
+        },
+        "sub": {
+          "description": "Canonical agent_uuid, the value IAC-Bus stores against every message.",
+          "type": "string",
+          "format": "uuid"
+        },
+        "handle": {
+          "type": "string",
+          "pattern": "^agent:[a-z0-9_-]+\\.[a-z0-9_.-]+\\.[0-9]+(-[0-9]+)*$"
+        },
+        "endpoint": {
+          "type": "string",
+          "pattern": "^agent:[a-z0-9_-]+\\.[a-z0-9_.-]+\\.[0-9]+(-[0-9]+)*@(web|slack|ide|api|automation|other)$"
+        },
+        "role": { "type": "string" },
+        "caps": {
+          "description": "Never wider than the leaf certificate's capability set.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(\\*|[a-z0-9_-]+(\\.[a-z0-9_-]+)*(\\.\\*)?)$"
+          }
+        },
+        "aud": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "root": {
+          "description": "Key id of the trust root this token chains to, so a verifier can select the right anchor before doing any crypto.",
+          "type": "string"
+        },
+        "iat": { "type": "integer" },
+        "nbf": { "type": "integer" },
+        "exp": { "type": "integer" }
+      }
+    }
+  }
+}
