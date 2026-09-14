@@ -1,0 +1,111 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master, dev]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: tests (python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest -q
+
+  smoke:
+    name: live smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Start KeyChain
+        env:
+          KEYCHAIN_API_TOKEN: ci-token
+          KEYCHAIN_PORT: "8102"
+          KEYCHAIN_DB_PATH: /tmp/keychain-ci.db
+          KEYCHAIN_AUTO_BOOTSTRAP_ROOT: "1"
+        run: |
+          # A throwaway master key: the CI database is discarded with the runner.
+          export KEYCHAIN_MASTER_KEY="$(python -c 'import os; print(os.urandom(32).hex())')"
+          nohup python server.py > /tmp/keychain-ci.log 2>&1 &
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8102/health > /dev/null; then
+              exit 0
+            fi
+            sleep 0.5
+          done
+          echo "KeyChain did not become healthy:"
+          cat /tmp/keychain-ci.log
+          exit 1
+
+      - name: Smoke
+        env:
+          KEYCHAIN_URL: http://127.0.0.1:8102
+          KEYCHAIN_API_TOKEN: ci-token
+        run: bash scripts/keychain_smoke.sh
+
+      - name: Service log
+        if: always()
+        run: cat /tmp/keychain-ci.log
+
+  cli:
+    name: cli bootstrap
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Bootstrap, mint and verify offline
+        run: |
+          export KEYCHAIN_MASTER_KEY="$(python keychain_cli.py gen-master-key \
+            | python -c 'import json,sys; print(json.load(sys.stdin)["KEYCHAIN_MASTER_KEY"])')"
+          export KEYCHAIN_DB_PATH=/tmp/keychain-cli.db
+          root_key_id="$(python keychain_cli.py init-root --name ci-root \
+            | python -c 'import json,sys; print(json.load(sys.stdin)["key_id"])')"
+          python keychain_cli.py mint --brand cursor --repo iac-bus \
+            --role orchestrator --out /tmp/orchestrator.json > /dev/null
+          token="$(python keychain_cli.py token --private-key /tmp/orchestrator.json \
+            --audience iac-bus \
+            | python -c 'import json,sys; print(json.load(sys.stdin)["token"])')"
+          python keychain_cli.py verify-token --token "$token" --audience iac-bus \
+            --trusted-root-key-id "$root_key_id"

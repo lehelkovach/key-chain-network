@@ -1,0 +1,45 @@
+[Unit]
+Description=KeyChain Network agent identity minting service
+Documentation=https://github.com/lehelkovach/key-chain-network
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=keychain
+Group=keychain
+WorkingDirectory=/opt/key-chain-network
+
+# KEYCHAIN_MASTER_KEY belongs in this file, which must be root-owned and 0600.
+# Without it the service refuses to start rather than holding trust root private
+# keys unsealed on disk.
+EnvironmentFile=/etc/key-chain-network/keychain.env
+Environment=KEYCHAIN_DB_PATH=/var/lib/key-chain-network/keychain.db
+
+ExecStart=/opt/key-chain-network/venv/bin/gunicorn \
+    --workers 2 \
+    --threads 4 \
+    --bind 127.0.0.1:8102 \
+    --access-logfile - \
+    --error-logfile - \
+    wsgi:app
+
+Restart=on-failure
+RestartSec=5
+
+# The database holds sealed private keys; keep the rest of the filesystem
+# read-only and the process unprivileged.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/key-chain-network
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryDenyWriteExecute=false
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
