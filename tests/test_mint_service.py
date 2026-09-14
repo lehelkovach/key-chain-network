@@ -623,6 +623,25 @@ class TestTokens:
         with pytest.raises(NotFoundError):
             service.issue_token("agent:cursor.iac-bus.9")
 
+    def test_an_authority_signed_token_stays_header_safe(self, service):
+        issued = service.issue_token(mint(service).agent["agent_uuid"])
+        assert issued["header_safe"] is True
+        assert issued["token_bytes"] == len(issued["token"])
+
+    def test_a_deep_chain_reports_that_the_token_outgrew_a_header(self, service):
+        """An embedded chain costs about 1.4 KB per link, so depth is visible."""
+        from keychain import tokens as token_module
+
+        parent = mint(service, role="orchestrator", custody=CUSTODY_KEYCHAIN)
+        for _ in range(3):
+            parent = mint(service, role="orchestrator", custody=CUSTODY_KEYCHAIN,
+                          parent_agent_uuid=parent.agent["agent_uuid"])
+        issued = service.issue_token(parent.agent["agent_uuid"])
+        assert issued["token_bytes"] > token_module.HEADER_SAFE_BYTES
+        assert issued["header_safe"] is False
+        # Still a perfectly valid token: the flag is advice, not a rejection.
+        assert service.verify_token(issued["token"]).valid
+
 
 class TestStats:
     def test_stats_track_what_has_been_minted(self, service, orchestrator):

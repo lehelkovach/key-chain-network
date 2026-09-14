@@ -31,6 +31,14 @@ TOKEN_TYPE = "kc1-token"
 DEFAULT_TTL_SECONDS = 3600
 MAX_TTL_SECONDS = 30 * 24 * 3600
 
+#: Size above which a token stops being comfortable in an ``Authorization``
+#: header. An embedded chain costs roughly 1.4 KB per link, so a deep delegation
+#: tree can produce a token that common proxy defaults (nginx allows 8 KB of
+#: request headers in total) will reject. Issuance does not fail above this --
+#: the token is still valid -- but callers are told the size so they can switch
+#: to an authority-signed token or carry the chain out of band.
+HEADER_SAFE_BYTES = 4096
+
 #: Tolerance for clock skew between issuer and verifier, in seconds.
 CLOCK_SKEW_SECONDS = 60
 

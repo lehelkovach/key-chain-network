@@ -1062,6 +1062,12 @@ class KeyChainService:
             },
         )
         _header, payload, _signature, _signing_input = tokens.decode(token)
+        if len(token) > tokens.HEADER_SAFE_BYTES:
+            logger.warning(
+                "token for %s is %d bytes, above the %d byte header-safe size; "
+                "a proxy may reject it in an Authorization header",
+                agent["logical_handle"], len(token), tokens.HEADER_SAFE_BYTES,
+            )
         return {
             "token": token,
             "token_type": "Bearer",
@@ -1072,6 +1078,8 @@ class KeyChainService:
             "capabilities": granted,
             "jti": payload.get("jti"),
             "self_contained": self_contained,
+            "token_bytes": len(token),
+            "header_safe": len(token) <= tokens.HEADER_SAFE_BYTES,
         }
 
     def verify_token(self, token, audience=None, required_capabilities=None,
