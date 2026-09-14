@@ -25,7 +25,7 @@ from . import capabilities as caps
 from . import certificates, keys
 from .canonical import b64u_decode, b64u_encode, canonical_json, from_epoch, to_epoch, utcnow
 from .errors import SignatureError, TrustError, ValidationError
-from version import PROTOCOL_VERSION
+from .protocol import PROTOCOL_VERSION
 
 TOKEN_TYPE = "kc1-token"
 DEFAULT_TTL_SECONDS = 3600

@@ -16,7 +16,3 @@ def _read_version():
 
 VERSION = _read_version()
 __version__ = VERSION
-
-# Protocol version advertised in certificates, tokens and API responses. Bumped
-# independently of the service version.
-PROTOCOL_VERSION = "kc1"

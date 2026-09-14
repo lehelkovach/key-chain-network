@@ -19,9 +19,10 @@ from flask import Flask, g, jsonify, request
 
 from keychain.config import KeyChainConfig
 from keychain.errors import KeyChainError, UnauthorizedError, ValidationError
+from keychain.protocol import PROTOCOL_VERSION
 from keychain.service import KeyChainService
 from keychain.store import KeyChainStore
-from version import PROTOCOL_VERSION, VERSION
+from version import VERSION
 
 OPEN_PATHS = frozenset(
     {"/health", "/.well-known/keychain/jwks.json", "/.well-known/keychain/roots.json"}

@@ -25,7 +25,7 @@ from .canonical import (
     utcnow,
 )
 from .errors import SignatureError, TrustError, ValidationError
-from version import PROTOCOL_VERSION
+from .protocol import PROTOCOL_VERSION
 
 CERT_TYPE_ROOT = "root"
 CERT_TYPE_AGENT = "agent"
