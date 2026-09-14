@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+venv/
+.venv/
+env/
+
+# Local KeyChain state. These files hold sealed private keys; never commit them.
+*.db
+*.db-wal
+*.db-shm
+keychain.db*
+*.identity.json
+*.jwk.json
+.env
+.env.*
+!.env.example
